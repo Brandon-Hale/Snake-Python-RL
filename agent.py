@@ -1,7 +1,6 @@
 import torch
 import random
 import numpy as np
-import matplotlib.pyplot as plt
 from collections import deque
 from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet, QTrainer
