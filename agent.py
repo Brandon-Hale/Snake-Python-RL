@@ -1,17 +1,19 @@
 import torch
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 from collections import deque
 from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet, QTrainer
 from helper import plot
+from helper import Plotter
 
 MAX_MEMORY = 100_000 #store 100000 items in memory
 BATCH_SIZE = 1000 
 LR = 0.001
 
 class Agent:
-    
+
     def __init__(self):
         self.n_games = 0
         self.epsilon = 0    # parameter to control randomness
@@ -19,7 +21,7 @@ class Agent:
         self.memory = deque(maxlen=MAX_MEMORY) # popleft() 
         self.model = Linear_QNet(11, 256, 3) # 11 states, 3 outputs - next move - play around with hidden
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
-
+        self.qvalue = 0
 
     def get_state(self, game):
         head = game.snake[0]
@@ -92,18 +94,18 @@ class Agent:
         else:
             state0 = torch.tensor(state, dtype=torch.float)
             prediction = self.model(state0)
+            self.qvalue = prediction.detach().numpy()
             move = torch.argmax(prediction).item()
             final_move[move] = 1
 
         return final_move
 
-def train():
+def train(agent, game, plotter):
     plot_scores = []
     plot_mean_scores = []
     total_score = 0
     record = 0
-    agent = Agent()
-    game = SnakeGameAI()
+
     while True:
         # get old state
         state_old = agent.get_state(game)
@@ -121,6 +123,10 @@ def train():
         # remember
         agent.remember(state_old, final_move, reward, state_new, done)
 
+        #plot_q_values(["Left", "Straight", "Right"], agent.qvalue)
+        plotter.update_q_values(["Left", "Straight", "Right"], agent.qvalue)
+        plotter.plot_q_values()
+
         if done:
             # train long memory, plot results - on previous games and moves
             game.reset()
@@ -137,7 +143,13 @@ def train():
             total_score += score
             mean_score = total_score / agent.n_games
             plot_mean_scores.append(mean_score)
+            #actions = ["Left", "Straight", "Right"]
             plot(plot_scores, plot_mean_scores)
+            #plot_q_values(actions, agent.qvalue)
 
 if __name__ == '__main__':
-    train()
+    plotter = Plotter()
+    agent = Agent()
+    game = SnakeGameAI()
+    train(agent, game, plotter)
+    
